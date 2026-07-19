@@ -1,0 +1,31 @@
+#include "BluetoothSerial.h"
+
+BluetoothSerial SerialBT;  // Inițializare Bluetooth
+
+const int ledPin = 19; // Puteți pune orice pin aici de output
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, LOW);
+
+  SerialBT.begin("ESP32_LED");  // Numele Bluetooth vizibil pe telefon
+  Serial.println("Bluetooth pornit. Gata pentru conexiune!");
+}
+
+void loop() {
+  if (SerialBT.available()) {
+    String comanda = SerialBT.readStringUntil('\n');
+    comanda.trim();  // Elimină spațiile și \r\n
+
+    if (comanda == "on") {
+      digitalWrite(ledPin, HIGH);
+      SerialBT.println("LED aprins");
+    } else if (comanda == "off") {
+      digitalWrite(ledPin, LOW);
+      SerialBT.println("LED stins");
+    } else {
+      SerialBT.println("Comanda necunoscuta");
+    }
+  }
+}

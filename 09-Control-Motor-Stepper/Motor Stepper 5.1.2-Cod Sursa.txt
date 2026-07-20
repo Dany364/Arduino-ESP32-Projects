@@ -1,0 +1,45 @@
+#include <Stepper.h>
+
+const int stepsPerRevolution = 2048; // pentru 28BYJ-48
+
+// ULN2003 – IN1–IN4
+const int IN1 = 8;
+const int IN2 = 9;
+const int IN3 = 10;
+const int IN4 = 11;
+
+Stepper motor(stepsPerRevolution, IN1, IN3, IN2, IN4);
+
+// Joystick
+const int joystickPin = A0; // axa X
+const int swPin = 7;        // pin buton joystick
+
+void setup() {
+  Serial.begin(9600);
+  motor.setSpeed(10); // viteză default
+  pinMode(swPin, INPUT_PULLUP); // butonul e activ LOW
+}
+
+void loop() {
+  // Verifică apăsarea joystick-ului
+  if (digitalRead(swPin) == LOW) {
+    Serial.println("Apasat – Rulare automata");
+    motor.setSpeed(15); // viteză mai mare la auto
+    motor.step(stepsPerRevolution); // o rotație completă
+    delay(500); // pauză ca să nu repete instant
+  }
+
+  // Control manual cu joystick pe axa X
+  int val = analogRead(joystickPin);
+
+  if (val < 400) {
+    motor.setSpeed(map(val, 0, 400, 15, 5));
+    motor.step(-1);
+  }
+  else if (val > 600) {
+    motor.setSpeed(map(val, 1023, 600, 15, 5));
+    motor.step(1);
+  }
+
+  delay(2);
+}

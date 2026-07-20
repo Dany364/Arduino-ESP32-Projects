@@ -1,0 +1,114 @@
+STATIE MULTISENZOR: #include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <DHT_U.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// --- PINOUT ---
+// DHT22
+#define DHTPIN   15    // DATA pe GPIO15
+#define DHTTYPE  DHT11
+
+// Alți senzori
+#define LDR_PIN  34    // LDR -> divizor -> ADC GPIO34
+#define PIR_PIN  14    // PIR OUT -> GPIO14
+#define MIC_PIN  35    // Microfon analog -> GPIO35 (ADC)
+
+// LED bar (10 LED-uri, catod comun)
+int ledPins[10] = {4, 5, 12, 13, 16, 17, 18, 19, 26, 27};
+
+// Obiect DHT
+DHT dht(DHTPIN, DHTTYPE);
+
+// LCD I2C
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Adresa 0x27 (sau 0x3F la unele module)
+
+// parametri
+const unsigned long LOOP_DELAY_MS = 2000; // 2 secunde între bucle
+const int LDR_SAMPLES = 8;    
+const int MIC_SAMPLES = 200;  
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+  pinMode(PIR_PIN, INPUT);
+
+  // Inițializare LED-uri
+  for (int i = 0; i < 10; i++) {
+    pinMode(ledPins[i], OUTPUT);
+    digitalWrite(ledPins[i], LOW);
+  }
+
+  // Inițializare LCD
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0,0);
+  lcd.print("Statia MultiSensor");
+  delay(2000);
+  lcd.clear();
+
+  Serial.println("=== START: Statia multisenzor (ESP32) ===");
+}
+
+void loop() {
+  // ==== 1) DHT11 ====
+  float hum = dht.readHumidity();
+  float temp = dht.readTemperature();
+
+  // ==== 2) LDR ====
+  long ldrSum = 0;
+  for (int i = 0; i < LDR_SAMPLES; i++) {
+    ldrSum += analogRead(LDR_PIN);
+    delay(5);
+  }
+  int ldrVal = ldrSum / LDR_SAMPLES; // 0..4095
+
+  // ==== 3) PIR ====
+  int motion = digitalRead(PIR_PIN);
+
+  // ==== 4) Microfon ====
+  int micMin = 4095;
+  int micMax = 0;
+  for (int i = 0; i < MIC_SAMPLES; i++) {
+    int val = analogRead(MIC_PIN);
+    if (val < micMin) micMin = val;
+    if (val > micMax) micMax = val;
+    delayMicroseconds(200);
+  }
+  int micLevel = micMax - micMin;
+
+  // ==== 5) LED-bar ====
+  int level = map(ldrVal, 0, 4095, 0, 10);
+  if (level < 0) level = 0;
+  if (level > 10) level = 10;
+  for (int i = 0; i < 10; i++) {
+    digitalWrite(ledPins[i], i < level ? HIGH : LOW);
+  }
+
+  // ==== 6) Serial Monitor ====
+  Serial.println("---------- Citire senzori ----------");
+  if (isnan(temp) || isnan(hum)) {
+    Serial.println("DHT11: ❌ Eroare la citire!");
+  } else {
+    Serial.print("🌡️ Temp: "); Serial.print(temp, 1); Serial.print(" °C");
+    Serial.print("  |  💧 Umid: "); Serial.print(hum, 1); Serial.println(" %");
+  }
+  Serial.print("🔆 LDR (ADC): "); Serial.print(ldrVal);
+  Serial.print("  -> LED-uri: "); Serial.println(level);
+  Serial.print("🚶 PIR: "); Serial.println(motion ? "MIȘCARE" : "NU");
+  Serial.print("🎤 Mic nivel: "); Serial.println(micLevel);
+  Serial.println("------------------------------------");
+  Serial.println();
+
+  // ==== 7) LCD Display ====
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("T:"); lcd.print(temp,1); lcd.print("C ");
+  lcd.print("H:"); lcd.print(hum,0); lcd.print("%");
+
+  lcd.setCursor(0,1);
+  lcd.print("L:"); lcd.print(ldrVal);
+  lcd.print(" M:"); lcd.print(micLevel);
+
+  delay(LOOP_DELAY_MS);
+}

@@ -1,0 +1,59 @@
+DHT11+Releu:
+#include <DHT.h>
+
+// --- Configurare pini ---
+#define DHTPIN 7       // Pinul de date de la DHT11
+#define DHTTYPE DHT11  // Tip senzor
+#define RELAY_PIN 8    // Releul conectat pe pin digital
+
+// --- Obiect DHT ---
+DHT dht(DHTPIN, DHTTYPE);
+
+// --- Praguri ---
+float TEMP_THRESHOLD = 25.0;  // Prag temperatură în °C
+
+void setup() {
+  Serial.begin(9600);
+  dht.begin();
+
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW); // Releu oprit la start
+
+  Serial.println("=== Sistem DHT11 + Releu ===");
+}
+
+void loop() {
+  // Citire temperatură și umiditate
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+
+  // Verificăm dacă citirea a reușit
+  if (isnan(h) || isnan(t)) {
+    Serial.println("❌ Eroare la citirea senzorului DHT11!");
+    delay(2000);
+    return;
+  }
+
+  // Afișăm valorile pe Serial Monitor
+  Serial.print("🌡 Temp: ");
+  Serial.print(t);
+  Serial.print(" °C  |  💧 Umid: ");
+  Serial.print(h);
+  Serial.println(" %");
+
+  // Control releu
+  if (t >= TEMP_THRESHOLD) {
+    digitalWrite(RELAY_PIN, HIGH); // pornește releul
+    Serial.println("⚡ Releu: ACTIVAT");
+  } else {
+    digitalWrite(RELAY_PIN, LOW);  // oprește releul
+    Serial.println("⚡ Releu: OPRIT");
+  }
+
+  Serial.println("-----------------------------");
+  delay(2000); // așteaptă 2 secunde
+}
+
+
+
+SIMULARE: https://wokwi.com/projects/469878878795064321

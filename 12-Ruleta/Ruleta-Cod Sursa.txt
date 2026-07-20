@@ -1,0 +1,64 @@
+RULETA: /*
+  Proiect Ruleta cu 15 LED-uri
+  Arduino Mega 2560 + CD74HC4067
+  Ruleta se oprește pe un LED aleator când apeși butonul
+*/
+
+const int S0 = 22;   // Select pin S0
+const int S1 = 23;   // Select pin S1
+const int S2 = 24;   // Select pin S2
+const int S3 = 25;   // Select pin S3
+const int SIG = 26;  // Pinul comun (I/O) conectat la intrarea CD74HC4067
+const int BUTTON = 30; // Pinul pentru buton
+
+void setup() {
+  pinMode(S0, OUTPUT);
+  pinMode(S1, OUTPUT);
+  pinMode(S2, OUTPUT);
+  pinMode(S3, OUTPUT);
+  pinMode(SIG, OUTPUT);
+  pinMode(BUTTON, INPUT_PULLUP); // folosim rezistență internă pull-up
+
+  digitalWrite(SIG, LOW);  // LED-urile stinse inițial
+  Serial.begin(9600);
+  Serial.println("Ruleta pornita!");
+  randomSeed(analogRead(A0)); // inițializare generator de numere aleatoare
+}
+
+void selectChannel(int channel) {
+  digitalWrite(S0, channel & 0x01);
+  digitalWrite(S1, (channel >> 1) & 0x01);
+  digitalWrite(S2, (channel >> 2) & 0x01);
+  digitalWrite(S3, (channel >> 3) & 0x01);
+}
+
+void loop() {
+  // așteptăm apăsarea butonului
+  if (digitalRead(BUTTON) == LOW) { // buton apăsat
+    Serial.println("Buton apăsat! Ruleta porneste...");
+    
+    // simulăm rularea ruletăi pentru efect vizual
+    for (int i = 0; i < 30; i++) { // număr de pași pentru "învârtire"
+      int led = i % 15; // mergem circular prin LED-uri
+      selectChannel(led);
+      digitalWrite(SIG, HIGH);
+      delay(50 + i*2); // încetinim treptat pentru efect
+      digitalWrite(SIG, LOW);
+    }
+
+    // alegem LED-ul final aleator
+    int finalLED = random(0, 15);
+    selectChannel(finalLED);
+    digitalWrite(SIG, HIGH); // aprindem LED-ul câștigător
+    Serial.print("LED ales: ");
+    Serial.println(finalLED);
+
+    // așteptăm până se eliberează butonul
+    while(digitalRead(BUTTON) == LOW) {
+      delay(10);
+    }
+
+    delay(1000); // LED-ul câștigător rămâne aprins 1 sec
+    digitalWrite(SIG, LOW); // stingem LED-ul
+  }
+}

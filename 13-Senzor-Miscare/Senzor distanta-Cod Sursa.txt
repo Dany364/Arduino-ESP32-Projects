@@ -1,0 +1,46 @@
+const int ledPins[10] = {22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
+
+const int trigPin = 16;
+const int echoPin = 13;
+
+void setup() {
+  for (int i = 0; i < 10; i++) {
+    pinMode(ledPins[i], OUTPUT);
+    digitalWrite(ledPins[i], LOW);
+  }
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+  Serial.begin(9600);
+}
+
+void loop() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  long duration = pulseIn(echoPin, HIGH);
+  float distance = duration * 0.034 / 2;
+
+  // Extindem distanța la 200 cm
+  distance = constrain(distance, 0, 200);
+
+  Serial.print("Distanta: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  // Aprindem LED-urile pe 0–200 cm
+  int ledsToLight = map(distance, 0, 200, 10, 0);
+
+  for (int i = 0; i < 10; i++) {
+    digitalWrite(ledPins[i], i < ledsToLight ? HIGH : LOW);
+  }
+
+  delay(100);
+}
+
+
+SIMULARE: https://wokwi.com/projects/469878878795064321

@@ -1,0 +1,74 @@
+COD VU-Metru: #include <SPI.h>
+
+// Pini SPI pentru ESP32 (MCP3008)
+#define PIN_CS   5   // Chip Select (CS)
+#define PIN_MISO 19  // MISO
+#define PIN_MOSI 23  // MOSI
+#define PIN_SCK  18  // SCK
+
+// LED Bar (10 LED-uri - pinii validați pentru ESP32)
+int ledPins[10] = {13, 12, 14, 27, 26, 25, 33, 32, 21, 22};
+
+// Praguri mai mari pentru aprinderea LED-urilor
+int thresholds[10] = {1000, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800, 3000};
+
+void setup() {
+  Serial.begin(115200);
+
+  // Inițializare SPI
+  SPI.begin(PIN_SCK, PIN_MISO, PIN_MOSI, PIN_CS);
+  pinMode(PIN_CS, OUTPUT);
+  digitalWrite(PIN_CS, HIGH);
+
+  // Inițializare LED-uri
+  for (int i = 0; i < 10; i++) {
+    pinMode(ledPins[i], OUTPUT);
+    digitalWrite(ledPins[i], LOW);
+  }
+
+  Serial.println("VU-metrul pornit (ESP32 + MCP3008)... cu delay mai mare");
+}
+
+// Citire MCP3008
+int readADC(int channel) {
+  if (channel < 0 || channel > 7) return -1;
+
+  byte command = 0b11000000 | (channel << 3);
+
+  digitalWrite(PIN_CS, LOW);
+
+  SPI.transfer(command);
+  byte highByte = SPI.transfer(0);
+  byte lowByte  = SPI.transfer(0);
+
+  digitalWrite(PIN_CS, HIGH);
+
+  int value = ((highByte & 0x0F) << 8) | lowByte;
+  return value;
+}
+
+// Citire mediată pentru stabilitate
+int readAverageADC(int channel, int samples = 10, int wait = 20) { // delay mai mare
+  long sum = 0;
+  for (int i = 0; i < samples; i++) {
+    sum += readADC(channel);
+    delay(wait);  // 20ms între citiri
+  }
+  return sum / samples;
+}
+
+void loop() {
+  int adcValue = readAverageADC(0, 10, 20); // citim canalul CH0 al MCP3008
+  Serial.println(adcValue);
+
+  // Aprindem LED-urile în funcție de nivel
+  for (int i = 0; i < 10; i++) {
+    if (adcValue >= thresholds[i]) {
+      digitalWrite(ledPins[i], HIGH);
+    } else {
+      digitalWrite(ledPins[i], LOW);
+    }
+  }
+
+  delay(300); // pauză mai mare înainte de următoarea actualizare
+}

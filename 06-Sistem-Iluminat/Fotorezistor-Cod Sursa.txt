@@ -1,0 +1,43 @@
+const int sensorPin = A2; // Pin analogic pentru foto-rezistor
+const int ledPins[10] = {22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
+
+void setup() {
+  Serial.begin(9600);
+  for (int i = 0; i < 10; i++) {
+    pinMode(ledPins[i], OUTPUT);
+  }
+}
+
+void loop() {
+  int sensorValue = analogRead(sensorPin);
+  Serial.println(sensorValue);  // Vezi valoarea în Serial Monitor
+
+  int numLedsOn = 0;
+
+  // Praguri mai fine
+  if (sensorValue > 950) numLedsOn = 10;
+  else if (sensorValue > 900) numLedsOn = 9;
+  else if (sensorValue > 800) numLedsOn = 8;
+  else if (sensorValue > 700) numLedsOn = 7;
+  else if (sensorValue > 600) numLedsOn = 6;
+  else if (sensorValue > 500) numLedsOn = 5;
+  else if (sensorValue > 400) numLedsOn = 4;
+  else if (sensorValue > 300) numLedsOn = 3;
+  else if (sensorValue > 200) numLedsOn = 2;
+  else if (sensorValue > 100) numLedsOn = 1;
+  else numLedsOn = 0;
+
+  // Actualizează LED-urile
+  for (int i = 0; i < 10; i++) {
+    if (i < numLedsOn)
+      digitalWrite(ledPins[i], HIGH);
+    else
+      digitalWrite(ledPins[i], LOW);
+  }
+
+  delay(100);
+}
+
+
+
+SIMULARE: https://wokwi.com/projects/469878440053003265

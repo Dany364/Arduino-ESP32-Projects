@@ -1,0 +1,63 @@
+#include <WiFi.h>
+
+// Datele rețelei Wi-Fi (modifică aici cu numele și parola tale)
+const char* ssid = "AndroidAP1755";
+const char* password = "123456789";
+
+const int ledPin = 19; // Pinul pe care ai conectat LED-ul
+
+WiFiServer server(80); // Server web pe portul 80
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, LOW); // LED stins inițial
+
+  // Conectare la rețeaua Wi-Fi
+  WiFi.begin(ssid, password);
+  Serial.print("Se conectează la Wi-Fi");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nConectat la rețea!");
+  Serial.print("IP local: ");
+  Serial.println(WiFi.localIP()); // IP-ul pe care îl accesezi din browser
+
+  server.begin();
+}
+
+void loop() {
+  WiFiClient client = server.available(); // Așteaptă client nou
+  if (client) {
+    Serial.println("Client conectat");
+    String request = client.readStringUntil('\r');
+    Serial.println("Cerere: " + request);
+    client.flush();
+
+    // Verifică dacă s-a cerut aprinderea/stingerea LED-ului
+    if (request.indexOf("/LED_ON") != -1) {
+      digitalWrite(ledPin, HIGH);
+    }
+    if (request.indexOf("/LED_OFF") != -1) {
+      digitalWrite(ledPin, LOW);
+    }
+
+    // Trimite pagina HTML către browser
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/html");
+    client.println();
+    client.println("<html><body style='text-align:center;'>");
+    client.println("<h1>ESP32 Control LED</h1>");
+    client.println("<a href=\"/LED_ON\"><button style='padding:20px;'>LED ON</button></a>");
+    client.println("<a href=\"/LED_OFF\"><button style='padding:20px;'>LED OFF</button></a>");
+    client.println("</body></html>");
+
+    delay(1);
+    client.stop();
+    Serial.println("Client deconectat");
+  }
+}

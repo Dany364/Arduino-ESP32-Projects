@@ -1,0 +1,277 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <Keypad.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+const int ledPin = 12;
+
+//=================== KEYPAD ===================
+
+const byte ROWS = 4;
+const byte COLS = 4;
+
+char keys[ROWS][COLS] =
+{
+  {'1','2','3','A'},
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}
+};
+
+byte rowPins[ROWS] = {22,23,24,25};
+byte colPins[COLS] = {26,27,28,29};
+
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+//=================== T9 ===================
+
+const char *t9[] =
+{
+  " ",
+  "",
+  "ABC",
+  "DEF",
+  "GHI",
+  "JKL",
+  "MNO",
+  "PQRS",
+  "TUV",
+  "WXYZ"
+};
+
+//=================== MORSE ===================
+
+const char *morse[] =
+{
+".-","-...","-.-.","-..",".",
+"..-.","--.","....","..",".---",
+"-.-",".-..","--","-.","---",
+".--.","--.-",".-.","...","-",
+"..-","...-",".--","-..-","-.--","--.."
+};
+
+char mesaj[33] = "";
+int mesajIndex = 0;
+
+char ultimaTasta = 0;
+int indexLitera = 0;
+
+unsigned long ultimulTimp = 0;
+const unsigned long timeoutT9 = 900;
+
+//=================== LED ===================
+
+void dot()
+{
+  digitalWrite(ledPin, HIGH);
+  delay(200);
+  digitalWrite(ledPin, LOW);
+  delay(200);
+}
+
+void dash()
+{
+  digitalWrite(ledPin, HIGH);
+  delay(600);
+  digitalWrite(ledPin, LOW);
+  delay(200);
+}
+
+//=================== MORSE ===================
+
+void playMorse(const char *cod)
+{
+  while(*cod)
+  {
+    if(*cod == '.')
+      dot();
+    else
+      dash();
+
+    cod++;
+  }
+
+  delay(600);
+}
+
+void transmiteMesaj()
+{
+  lcd.clear();
+  lcd.print("Transmit...");
+
+  Serial.println();
+  Serial.print("Mesaj: ");
+  Serial.println(mesaj);
+
+  for(int i = 0; i < mesajIndex; i++)
+  {
+    char litera = toupper(mesaj[i]);
+
+    if(litera >= 'A' && litera <= 'Z')
+    {
+      int index = litera - 'A';
+
+      Serial.print(litera);
+      Serial.print(" : ");
+      Serial.println(morse[index]);
+
+      playMorse(morse[index]);
+    }
+
+    else if(litera == ' ')
+    {
+      delay(1200);
+    }
+  }
+
+  lcd.clear();
+  lcd.print("Mesaj trimis");
+  delay(1500);
+
+  lcd.clear();
+  lcd.print(mesaj);
+}
+
+void stergeMesaj()
+{
+  mesajIndex = 0;
+  mesaj[0] = '\0';
+
+  lcd.clear();
+  lcd.print("Mesaj sters");
+
+  delay(1000);
+
+  lcd.clear();
+  lcd.print("Scrie mesaj");
+}
+
+//=================== T9 ===================
+
+void adaugaLitera()
+{
+  if(ultimaTasta < '2' || ultimaTasta > '9')
+    return;
+
+  int cifra = ultimaTasta - '0';
+
+  String litere = t9[cifra];
+
+  char litera = litere[indexLitera % litere.length()];
+
+  if(mesajIndex < 32)
+  {
+    mesaj[mesajIndex++] = litera;
+    mesaj[mesajIndex] = '\0';
+  }
+
+  lcd.clear();
+  lcd.print(mesaj);
+
+  Serial.print(litera);
+
+  ultimaTasta = 0;
+  indexLitera = 0;
+}
+
+//=================== SETUP ===================
+
+void setup()
+{
+  Serial.begin(9600);
+
+  pinMode(ledPin, OUTPUT);
+
+  lcd.init();
+  lcd.backlight();
+
+  lcd.setCursor(0,0);
+  lcd.print("Lanterna Morse");
+
+  lcd.setCursor(0,1);
+  lcd.print("Scrie mesaj");
+}
+
+
+void loop()
+{
+  char key = keypad.getKey();
+
+  // Confirmă litera după timeout
+  if (ultimaTasta != 0 && millis() - ultimulTimp > timeoutT9)
+  {
+    adaugaLitera();
+  }
+
+  if (key)
+  {
+    ultimulTimp = millis();
+
+    // Ștergere mesaj
+    if (key == '*')
+    {
+      stergeMesaj();
+      ultimaTasta = 0;
+      indexLitera = 0;
+      return;
+    }
+
+    // Trimitere mesaj în Morse
+    if (key == '#')
+    {
+      if (ultimaTasta != 0)
+        adaugaLitera();
+
+      transmiteMesaj();
+      return;
+    }
+
+    // Spațiu
+    if (key == '0')
+    {
+      if (ultimaTasta != 0)
+        adaugaLitera();
+
+      if (mesajIndex < 32)
+      {
+        mesaj[mesajIndex++] = ' ';
+        mesaj[mesajIndex] = '\0';
+
+        lcd.clear();
+        lcd.print(mesaj);
+      }
+
+      return;
+    }
+
+    // Tastele 2-9 (T9)
+    if (key >= '2' && key <= '9')
+    {
+      if (key == ultimaTasta)
+      {
+        indexLitera++;
+      }
+      else
+      {
+        if (ultimaTasta != 0)
+          adaugaLitera();
+
+        ultimaTasta = key;
+        indexLitera = 0;
+      }
+
+      // Afișează litera curentă (preview)
+      int cifra = key - '0';
+      String litere = t9[cifra];
+      char preview = litere[indexLitera % litere.length()];
+
+      lcd.clear();
+      lcd.print(mesaj);
+      lcd.print(preview);
+    }
+  }
+}
+
+
+Simulare:   https://wokwi.com/projects/469885650776395777

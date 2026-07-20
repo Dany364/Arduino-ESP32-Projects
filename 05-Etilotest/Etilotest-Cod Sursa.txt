@@ -1,0 +1,52 @@
+COD ETILOTEST: #include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Adresa I2C (poate fi diferită!)
+
+int sensorPin = A0;  
+int ledPins[] = {2, 3, 4, 5, 6, 7};  // 3 verzi, 2 galbene, 1 rosu
+
+void setup() {
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("Etilotest ON");
+
+  for (int i = 0; i < 6; i++) {
+    pinMode(ledPins[i], OUTPUT);
+    digitalWrite(ledPins[i], LOW);
+  }
+
+  Serial.begin(9600);
+}
+
+void loop() {
+  int value = analogRead(sensorPin);
+  Serial.print("Valoare senzor: ");
+  Serial.println(value);
+
+  // stabilim nivel in functie de praguri
+  int nivel = 0;
+  if (value > 210) nivel = 1;
+  if (value > 250) nivel = 2;
+  if (value > 300) nivel = 3;
+  if (value > 350) nivel = 4;
+  if (value > 400) nivel = 5;
+  if (value > 450) nivel = 6;
+
+  // stingem toate LED-urile
+  for (int i = 0; i < 6; i++) digitalWrite(ledPins[i], LOW);
+
+  // aprindem LED-urile corespunzătoare
+  for (int i = 0; i < nivel; i++) digitalWrite(ledPins[i], HIGH);
+
+  // afisare mesaj pe LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  if (nivel == 0) lcd.print("Sobru");
+  else if (nivel <= 2) lcd.print("Putin alcool");
+  else if (nivel <= 4) lcd.print("Atentie!");
+  else lcd.print("Pericol!");
+
+  delay(500);
+}

@@ -1,0 +1,22 @@
+#define RELAY_PIN 25   // Pinul conectat la releu
+#define BUTTON_PIN 26  // Pinul conectat la buton
+
+void setup() {
+  pinMode(RELAY_PIN, OUTPUT);        // Setăm pinul pentru releu ca ieșire
+  pinMode(BUTTON_PIN, INPUT_PULLUP); // Buton cu rezistență internă de pull-up
+}
+
+void loop() {
+  int buttonState = digitalRead(BUTTON_PIN);
+
+  if (buttonState == LOW) {
+    // Buton apăsat – dezactivăm releul (LED stins)
+    digitalWrite(RELAY_PIN, LOW);
+  } else {
+    // Buton NEapăsat – activăm releul (LED aprins)
+    digitalWrite(RELAY_PIN, HIGH);
+  }
+}
+
+
+SIMULARE: https://wokwi.com/projects/469878878795064321

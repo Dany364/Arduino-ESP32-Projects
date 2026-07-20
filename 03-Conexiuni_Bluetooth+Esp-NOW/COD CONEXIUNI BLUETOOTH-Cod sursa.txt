@@ -1,0 +1,78 @@
+COD CONEXIUNI BLUETOOTH: Slave:#include "BluetoothSerial.h"
+
+BluetoothSerial SerialBT;
+
+#define LED_PIN 2
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
+  SerialBT.begin("ESP32_SLAVE");
+  Serial.println("Slave pornit. Asteptam comenzi...");
+}
+
+void loop() {
+  if (SerialBT.available()) {
+    String comanda = SerialBT.readStringUntil('\n');
+    comanda.trim();
+
+    if (comanda == "ON") {
+      digitalWrite(LED_PIN, HIGH);
+      Serial.println("LED aprins (comanda Master)");
+    } else if (comanda == "OFF") {
+      digitalWrite(LED_PIN, LOW);
+      Serial.println("LED stins (comanda Master)");
+    }
+  }
+}
+Master: #include "BluetoothSerial.h"
+
+BluetoothSerial SerialBT;
+
+// Adresa MAC a Slave-ului
+uint8_t slaveAddress[] = {0x14, 0x33, 0x5C, 0x38, 0x92, 0xBA};
+
+#define BUTTON_PIN 4
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+  if (!SerialBT.begin("ESP32_MASTER", true)) {  
+    Serial.println("Eroare la pornirea Bluetooth!");
+    while (1);
+  }
+
+  Serial.println("Master pornit. Cautam slave...");
+
+  if (SerialBT.connect(slaveAddress)) {
+    Serial.println("Conectat la Slave!");
+  } else {
+    Serial.println("Conectare esuata!");
+  }
+}
+
+void loop() {
+  static int lastState = HIGH;  // stare buton anterioara
+  int currentState = digitalRead(BUTTON_PIN);
+
+  // detectam apasare
+  if (lastState == HIGH && currentState == LOW) {
+    SerialBT.println("ON");
+    Serial.println("Trimis catre Slave: ON");
+  }
+
+  // detectam eliberare
+  if (lastState == LOW && currentState == HIGH) {
+    SerialBT.println("OFF");
+    Serial.println("Trimis catre Slave: OFF");
+  }
+
+  lastState = currentState;
+  delay(50);
+}
+
+
+SIMULARE: https://wokwi.com/projects/469883589843055617

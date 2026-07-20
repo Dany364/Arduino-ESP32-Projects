@@ -1,0 +1,21 @@
+// Definirea pinilor
+const int buttonPin = 2;   // Buton conectat la pinul 2
+const int ledPin = 13;     // LED conectat la pinul 13
+
+void setup() {
+  pinMode(buttonPin, INPUT_PULLUP); // Activează rezistența internă de pull-up
+  pinMode(ledPin, OUTPUT);
+}
+
+void loop() {
+  // Butonul este apăsat când pinul citește LOW
+  if (digitalRead(buttonPin) == LOW) {
+    digitalWrite(ledPin, HIGH); // Aprinde LED-ul
+  } else {
+    digitalWrite(ledPin, LOW);  // Stinge LED-ul
+  }
+}
+
+
+
+Simulare: https://wokwi.com/projects/469878878795064321

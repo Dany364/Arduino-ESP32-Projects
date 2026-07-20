@@ -1,0 +1,142 @@
+COD CONEXIUNI ESP-NOW: Master: #include <Arduino.h>
+#include <esp_now.h>
+#include <WiFi.h>
+
+#define BUTTON_PIN 25  
+
+// Adresa MAC a Slave-ului (exact cea citită)
+uint8_t slaveAddress[] = {0x14, 0x33, 0x5C, 0x38, 0x92, 0xB8};
+
+typedef struct struct_message {
+  bool buttonState;
+} struct_message;
+
+struct_message myData;
+esp_now_peer_info_t peerInfo;
+
+// Detectăm IDF v5 (folosește wifi_tx_info_t)
+#ifdef ESP_NOW_MAX_TOTAL_PEER_NUM
+  #define USE_IDF_V5
+#endif
+
+// Callback trimitere
+#ifdef USE_IDF_V5
+void OnDataSent(const wifi_tx_info_t *info, esp_now_send_status_t status) {
+  Serial.print("Status trimitere către: ");
+  if (info) {
+    for (int i = 0; i < 6; i++) {
+      Serial.printf("%02X", info->des_addr[i]);
+      if (i < 5) Serial.print(":");
+    }
+  }
+  Serial.print(" -> ");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Succes" : "Eșec");
+}
+#else
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  Serial.print("Status trimitere către: ");
+  for (int i = 0; i < 6; i++) {
+    Serial.printf("%02X", mac_addr[i]);
+    if (i < 5) Serial.print(":");
+  }
+  Serial.print(" -> ");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Succes" : "Eșec");
+}
+#endif
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+  WiFi.mode(WIFI_STA);
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Eroare la init ESP-NOW!");
+    return;
+  }
+
+  esp_now_register_send_cb(OnDataSent);
+
+  memcpy(peerInfo.peer_addr, slaveAddress, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Eroare la adaugarea slave-ului!");
+    return;
+  }
+
+  Serial.println("Master pornit!");
+}
+
+void loop() {
+  myData.buttonState = (digitalRead(BUTTON_PIN) == LOW);
+
+  esp_err_t result = esp_now_send(slaveAddress, (uint8_t *) &myData, sizeof(myData));
+  if (result == ESP_OK) {
+    Serial.println("Mesaj trimis");
+  } else {
+    Serial.println("Eroare la trimitere!");
+  }
+
+  delay(500);
+}
+Slave: #include <Arduino.h>
+#include <esp_now.h>
+#include <WiFi.h>
+
+#define LED_PIN 2  
+
+typedef struct struct_message {
+  bool buttonState;
+} struct_message;
+
+struct_message myData;
+
+#ifdef ESP_NOW_MAX_TOTAL_PEER_NUM
+void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) {
+  memcpy(&myData, incomingData, sizeof(myData));
+  Serial.print("Date primite de la: ");
+  for (int i = 0; i < 6; i++) {
+    Serial.printf("%02X", info->src_addr[i]);
+    if (i < 5) Serial.print(":");
+  }
+  Serial.print(" -> Buton: ");
+  Serial.println(myData.buttonState ? "APĂSAT" : "NEAPĂSAT");
+
+  digitalWrite(LED_PIN, myData.buttonState ? HIGH : LOW);
+}
+#else
+void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
+  memcpy(&myData, incomingData, sizeof(myData));
+  Serial.print("Date primite de la: ");
+  for (int i = 0; i < 6; i++) {
+    Serial.printf("%02X", mac[i]);
+    if (i < 5) Serial.print(":");
+  }
+  Serial.print(" -> Buton: ");
+  Serial.println(myData.buttonState ? "APĂSAT" : "NEAPĂSAT");
+
+  digitalWrite(LED_PIN, myData.buttonState ? HIGH : LOW);
+}
+#endif
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+
+  WiFi.mode(WIFI_STA);
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Eroare la init ESP-NOW!");
+    return;
+  }
+
+  esp_now_register_recv_cb(OnDataRecv);
+
+  Serial.println("Slave pornit!");
+}
+
+void loop() {
+  // Nimic aici, callback-ul face totul
+}
